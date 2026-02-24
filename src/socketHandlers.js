@@ -392,25 +392,17 @@ module.exports = function registerHandlers(io) {
         // ──────────────────────────────────────────────
         socket.on('disconnect', () => {
             console.log(`[disconnected] ${socket.id}`);
-            const result = leaveRoom(socket.id);
+            const result = leaveRoom(socket.id, io);
+
             if (!result.room && !result.deleted) return;
             if (result.deleted) return;
+
             const room = result.room;
-            io.to(result.code).emit('room:updated', sanitizeRoom(room));
+            // Notify others that this player is offline (grace period started)
+            io.to(room.code).emit('room:updated', sanitizeRoom(room));
+
             if (room.phase === 'game' && room.game) {
-                // Skip disconnected player's turn if it's theirs
-                const game = room.game;
-                const current = game.players[game.currentPlayerIndex];
-                if (current && current.id === socket.id) {
-                    game.currentPlayerIndex =
-                        (game.currentPlayerIndex + game.direction + game.players.length) %
-                        game.players.length;
-                    game.turnStartedAt = Date.now();
-                    broadcastGameState(io, room);
-                    startTurnTimer(io, room);
-                } else {
-                    broadcastGameState(io, room);
-                }
+                broadcastGameState(io, room);
             }
         });
     });
