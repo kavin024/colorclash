@@ -215,7 +215,19 @@ module.exports = function registerHandlers(io) {
                     room.phase = 'results';
                     clearTurnTimer(room.code);
                     broadcastGameState(io, room);
-                    io.to(room.code).emit('game:ended', { winner: currentPlayer.nickname });
+
+                    // Build rankings: winner = rank 1, others by cards held (asc = better)
+                    const losers = game.players
+                        .filter((p) => p.id !== currentPlayer.id)
+                        .sort((a, b) => a.hand.length - b.hand.length);
+                    const rankings = [
+                        { rank: 1, id: currentPlayer.id, nickname: currentPlayer.nickname, cardCount: 0 },
+                        ...losers.map((p, i) => ({
+                            rank: i + 2, id: p.id, nickname: p.nickname, cardCount: p.hand.length,
+                        })),
+                    ];
+
+                    io.to(room.code).emit('game:ended', { winner: currentPlayer.nickname, rankings });
                     return callback({ ok: true });
                 }
 
