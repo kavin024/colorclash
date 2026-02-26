@@ -191,6 +191,12 @@ module.exports = function registerHandlers(io) {
                 currentPlayer.clashSafe = false;
                 game.clashCalledBy = null;
 
+                if (currentPlayer.hand.length === 1) {
+                    currentPlayer.lastCardAt = Date.now();
+                } else {
+                    currentPlayer.lastCardAt = null;
+                }
+
                 // Emit event for activity feed
                 const nextIdx = ((game.currentPlayerIndex + game.direction + game.players.length) % game.players.length);
                 const nextPlayer = game.players[nextIdx];
@@ -318,6 +324,11 @@ module.exports = function registerHandlers(io) {
                     return callback({ ok: false, error: 'Target does not have 1 card.' });
                 if (target.clashSafe)
                     return callback({ ok: false, error: 'Player already called Color Clash.' });
+
+                // Check 5-second grace period
+                if (target.lastCardAt && Date.now() - target.lastCardAt < 5000) {
+                    return callback({ ok: false, error: 'Wait 5 seconds for them to call it!' });
+                }
 
                 // Penalty: draw 2
                 const targetIdx = game.players.indexOf(target);
